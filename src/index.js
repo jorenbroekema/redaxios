@@ -154,9 +154,14 @@ export default (function create(/** @type {Options} */ defaults) {
 	 * @returns {Promise<Response<T>>}
 	 */
 	function redaxios(url, config, _method, _data) {
+		let _url = '';
 		if (typeof url !== 'string') {
 			config = url;
-			url = config.url;
+			if (config.url !== undefined) {
+				_url = config.url;
+			}
+		} else {
+			_url = url;
 		}
 
 		let response = /** @type {Response<any>} */ ({ config });
@@ -179,7 +184,7 @@ export default (function create(/** @type {Options} */ defaults) {
 		const customHeaders = {};
 
 		(options.transformRequest || []).map((f) => {
-			data = f(data, options.headers) || data;
+			data = f(data, options.headers || {}) || data;
 		});
 
 		if (data && typeof data === 'object' && typeof data.append !== 'function') {
@@ -188,30 +193,30 @@ export default (function create(/** @type {Options} */ defaults) {
 		}
 
 		const m = document.cookie.match(RegExp('(^|; )' + options.xsrfCookieName + '=([^;]*)'));
-		if (m) customHeaders[options.xsrfHeaderName] = m[2];
+		if (m && options.xsrfHeaderName) customHeaders[options.xsrfHeaderName] = m[2];
 
 		if (options.auth) {
 			customHeaders.authorization = options.auth;
 		}
 
 		if (options.baseURL) {
-			url = new URL(url, options.baseURL) + '';
+			_url = new URL(_url, options.baseURL) + '';
 		}
 
 		if (options.params) {
-			const divider = ~url.indexOf('?') ? '&' : '?';
+			const divider = ~_url.indexOf('?') ? '&' : '?';
 			const query = options.paramsSerializer
 				? options.paramsSerializer(options.params)
 				: new URLSearchParams(options.params);
-			url += divider + query;
+			_url += divider + query;
 		}
 
 		const fetchFunc = options.fetch || fetch;
 
-		return fetchFunc(url, {
+		return fetchFunc(_url, {
 			method: _method || options.method,
 			body: data,
-			headers: deepMerge(options.headers, customHeaders, true),
+			headers: deepMerge(options.headers || {}, customHeaders, true),
 			credentials: options.withCredentials ? 'include' : undefined
 		}).then((res) => {
 			for (const i in res) {
@@ -235,17 +240,19 @@ export default (function create(/** @type {Options} */ defaults) {
 			}
 
 			return res[options.responseType || 'text']()
-				.then((data) => {
-					response.data = data;
-					try {
+				.then(
+					/** @param {string} data */ (data) => {
+						response.data = data;
 						response.data = JSON.parse(data);
-          }
-					catch (e) {}
+					}
+				)
+				.catch(Object)
+				.then(() => {
 					redaxios.interceptors.response.handlers.map((handler) => {
 						response = (handler && handler.done(response)) || response;
 					});
 					return response;
-				})
+				});
 		});
 	}
 

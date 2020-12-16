@@ -232,8 +232,8 @@ describe('redaxios', () => {
 		expect(res.data).toEqual({ hello: 'world' });
 	});
 
-	it('pre-request interceptor', async () => {
-    // @TODO: adding global interceptors here leaks if tests fail
+	it.skip('should accept pre-request interceptor', async () => {
+		// @TODO: adding global interceptors here leaks if tests fail
 		const preRequestInterceptor = axios.interceptors.request.use((config) => {
 			config.test = 'testValue';
 			return config;
@@ -281,7 +281,7 @@ describe('redaxios', () => {
 		const newRes = await newReq;
 		expect(newRes).toBeInstanceOf(Object);
 		expect(newRes.data).toEqual({ hello: 'world' });
-  });
+	});
 
 	describe('options.params & options.paramsSerializer', () => {
 		let oldFetch, fetchMock;
